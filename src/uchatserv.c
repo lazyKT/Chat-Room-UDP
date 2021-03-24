@@ -79,7 +79,7 @@ int main (int argc, char** argv)
     if (FD_ISSET (STDIN, &ready_set))
     {
       /* server logging */
-      if (get_server_command(STDIN) == -1)
+      if (get_server_command (STDIN, head) == -1)
         break;
     }
   }

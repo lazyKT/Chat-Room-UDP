@@ -21,6 +21,16 @@ char data[BUF_SIZE];
 client handling
 */
 
+/* get ip address and port from client_t */
+void get_netaddr (struct sockaddr_in *c, char* ip, int* port)
+{
+  struct in_addr addr = c->sin_addr;
+  memset (ip, '\0', INET_ADDRSTRLEN);
+  inet_ntop (AF_INET, &addr, ip, INET_ADDRSTRLEN);
+
+  *port = htons (c->sin_port);
+}
+
 /* check whether the connected client is already in the client_list */
 int is_connected (struct sockaddr_in *s, client_t *head)
 {
@@ -77,6 +87,7 @@ int assign_client (struct sockaddr_in *c_sock, char *buffer, client_t** head, cl
   {
     client_t *c = (client_t*) malloc(sizeof(client_t));
     memset (c, 0, sizeof(client_t));
+    c->id = rand() % (1000 + 1 - 10) + 10; /* rand between 10 and 1000 */
     strcpy (c->name, buffer);
     memcpy (&(c->sock_addr), c_sock, sizeof(*c_sock));
     c->next = NULL;
@@ -88,6 +99,7 @@ int assign_client (struct sockaddr_in *c_sock, char *buffer, client_t** head, cl
   {
     client_t *c = (client_t*) malloc(sizeof(client_t));
     memset (c, 0, sizeof(client_t));
+    c->id = rand() % (1000 + 1 - 10) + 10; /* rand between 1000 and 10 */
     strcpy (c->name, buffer);
     memcpy (&(c->sock_addr), c_sock, sizeof(*c_sock));
     c->next = NULL;
@@ -131,6 +143,7 @@ void disconnect_client (struct sockaddr_in* c_sock, client_t** head, client_t** 
         free (canditate);
         break;
       }
+      walker = walker->next;
     }
   }
   printf("client has been removed\n");
@@ -206,7 +219,7 @@ char* get_username (struct sockaddr_in *c, client_t* head)
 }
 
 /* get server commands */
-int get_server_command (int in_fd)
+int get_server_command (int in_fd, client_t* head)
 {
   char buffer[BUF_SIZE];
   memset(buffer, 0, BUF_SIZE);
@@ -216,11 +229,28 @@ int get_server_command (int in_fd)
     perror("stdin");
   if (cnt < BUF_SIZE) 
     buffer[cnt] = '\0';
-  if (strcmp(buffer,"./exit\n") == 0)
+  if (strcmp (buffer,"./sh cli\n") == 0)
+    show_clients (head);
+  if (strcmp (buffer,"./exit\n") == 0)
     return -1;
   
   return 0;
 }
 
-
+/* print client list */
+void show_clients (client_t* head)
+{
+  printf ("Client Lists\n=============\n\n");
+  char ip_addr[INET_ADDRSTRLEN];
+  int port;
+  
+  printf("ID\tUName\t\tIP-Address:Port\n");
+  client_t* walker = head;
+  while (walker != NULL)
+  {
+    get_netaddr (&(walker->sock_addr), ip_addr, &port);
+    printf("%d\t%s\t\t%s:%d\n", walker->id, walker->name, ip_addr, port);
+    walker = walker->next;
+  }
+}
 
