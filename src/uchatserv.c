@@ -104,7 +104,10 @@ void process_packets (int fd, struct sockaddr_in client)
 
   if (r < BUFF_SIZE) message[r-1] = '\0';
   
-  int cc = assign_client(&client, message, &head, &tail); /* assign client to client list */ 
+  int cc = -1;
+  if (strcmp (message, "./exit") != 0)
+    cc = assign_client (&client, message, &head, &tail); /* assign client to client list */ 
+
   if (cc > 0)
   {
     printf("%s connected\n", message);
@@ -126,7 +129,12 @@ void process_packets (int fd, struct sockaddr_in client)
 
     if (strcmp(username, "") == 0)
       strcpy(username, "Unkown User");
-    
+
+    if (strcmp(message, "./exit") == 0)
+    {
+      disconnect_client (&client, &head, &tail);
+      strcpy (message, "disconnected");
+    }
     send_to_all (fd, &client, username, message, head);
   }
 }

@@ -15,25 +15,24 @@
 #define STDIN 0
 
 
-int handshake(int, struct sockaddr_in);
-int send_msg(int in, int out, struct sockaddr_in);
-int recv_msg(int fd, struct sockaddr_in);
+void assign_args (int argc, char** argv, char* uname, char* ip); /* take credentials from cmd args */
+int get_idx (int, char**, char*); /* get idx of the element from the array */
+int handshake (int, struct sockaddr_in, char*); /* perform handshake and establish connection with server */
+int send_msg (int in, int out, struct sockaddr_in);
+int recv_msg (int fd, struct sockaddr_in);
 
 int main (int argc, char* argv[])
 {
   int sock_fd, s, r;
+  char uname[20], ip[16];
   struct sockaddr_in server, client;
   struct hostent *h;
   struct in_addr server_addr;
   fd_set test_set, ready_set;
 
-  if (argc < 2)
-  {
-    fprintf(stderr, "Usage: %s <ip-address>\n", argv[0]);
-    exit(EXIT_FAILURE);
-  }
-
-  inet_aton(argv[1], &server_addr); /* convert string to IP Addr */
+  assign_args (argc, argv, uname, ip); /* assign credentials from cmd args */
+  printf("usrname: %s, ip: %s\n", uname, ip);
+  inet_aton(ip, &server_addr); /* convert string to IP Addr */
   h = gethostbyaddr(&server_addr, sizeof(server_addr), AF_INET);
   if (h == NULL)
   {
@@ -52,7 +51,7 @@ int main (int argc, char* argv[])
   server.sin_port = htons(PORT);
   memcpy((char *)&server.sin_addr, h->h_addr, h->h_length);
 
-  if (handshake(sock_fd, server) != 0) /* initial handshake */
+  if (handshake(sock_fd, server, uname) != 0) /* initial handshake */
   {
     perror("Initial-handshake");
     exit(EXIT_FAILURE);
@@ -94,17 +93,60 @@ int main (int argc, char* argv[])
 }
 
 
+/* search element in array */
+int get_idx (int argc, char** argv, char* val)
+{
+  int i;
+
+  for (i = 0; i < argc; i++)
+  {
+    if (strcmp(val, argv[i]) == 0)
+      return i;
+  }
+
+  return -1;
+}
+
+
+/* take credentials from cmd args and assign */
+void assign_args (int argc, char** argv, char* uname, char* ip)
+{
+  int i;
+  if (argc < 4)
+  {
+    fprintf(stderr, "Usage; %s <ipv4-address> -u username\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
+  i = get_idx (argc, argv, "-u");
+  if (i < 0 || i > 2)
+  {
+    fprintf(stderr, "Usage: %s <ipv4-address> -u username\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
+
+  strcpy (uname, argv[i+1]);
+  if (i == 1) strcpy (ip, argv[i+2]);
+  else  strcpy (ip, argv[i-1]);
+}
+
+
 /* initial handshake between server and client */
-int handshake (int fd, struct sockaddr_in server)
+int handshake (int fd, struct sockaddr_in server, char* uname)
 {
   int r, s, s_len = sizeof(server);
-  char username[] = "Bob\n";
   
-  if ((s = sendto(fd, username, strlen(username), 0, 
+  if ((s = sendto(fd, uname, strlen(uname) + 1, 0, 
       (struct sockaddr*)&server, s_len)) < 0)
   {
     perror("sendto");
   }
+
+  if (s == 0) /* server is not running or unreachable */
+  {
+    perror("Connection refused: Server is unreachable or not running.\n");
+    exit(EXIT_FAILURE);
+  }
+
   char msg[BUFF_SIZE];
   memset(msg, 0, BUFF_SIZE);
   if ((r = recvfrom(fd, msg, BUFF_SIZE, 0, 
@@ -131,15 +173,17 @@ int send_msg (int in, int out, struct sockaddr_in server)
     perror("stdin");
     return -1;
   }
-
-  if ((s = sendto(out, buffer, cnt, 0, 
-      (struct sockaddr*)&server, s_len)) < 0)
+  
+  if (strcmp(buffer, "./exit\n") == 0) 
   {
-    perror("sendto");
+    /* disconnect from the server and exit */
+    sendto (out, buffer, cnt, 0, (struct sockaddr*)&server, s_len);
     return -1;
   }
+
+  if ((s = sendto (out, buffer, cnt, 0, (struct sockaddr*)&server, s_len)) < 0)
+    perror ("sendto");
   
-  if (strcmp(buffer, "./exit\n") == 0) return -1; /* exit the current session */
   
   return 0;
 }
@@ -158,7 +202,7 @@ int recv_msg (int fd, struct sockaddr_in server)
     perror("recvfrom");
     return -1;
   }
-  printf("remote: %s", buffer); 
+  printf("%s", buffer); 
   return 0;
 }
 

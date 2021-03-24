@@ -98,6 +98,44 @@ int assign_client (struct sockaddr_in *c_sock, char *buffer, client_t** head, cl
   return 0;
 }
 
+/* disconnect client: remove the client from the linked list */
+void disconnect_client (struct sockaddr_in* c_sock, client_t** head, client_t** tail)
+{
+  printf("Removing from client linked list...\n");
+  if (is_equal (c_sock, &((*head)->sock_addr)) == 1)
+  {
+    /* if the dc client is the head */
+    client_t* temp = *head;
+    *head = (*head)->next;
+    free(temp);
+  }
+  else
+  {
+    client_t* canditate;
+    client_t* walker = *head;
+    while (walker->next != NULL)
+    {
+      canditate = walker->next;
+      if (is_equal (c_sock, &(canditate->sock_addr)) == 1)
+      {
+        if (canditate->next == NULL)
+        {
+          walker->next = NULL;
+          *tail = walker;
+          free(canditate);
+          break;
+        }
+        /* remove the canditate from the linked list */
+        walker->next = canditate->next;
+        canditate->next = NULL;
+        free (canditate);
+        break;
+      }
+    }
+  }
+  printf("client has been removed\n");
+} 
+
 
 /*
 data(packet) handling
@@ -129,18 +167,14 @@ void send_to_all (int sock_fd, struct sockaddr_in *sender_sock, char* uname, cha
 {
   int c_len;
   char data[BUF_SIZE+20];
-  packet_t *p = construct_packet(sender_sock, uname, buffer);
-  if (p == NULL)
-  {
-    return; /* message length too long */
-  }
   client_t *walker = head;
+  perror("insdie send_to_all()\n");
   while (walker != NULL)
   {
-    if (is_equal (&(walker->sock_addr), &(p->sock_addr)) == 0)
-    { 
+    if (is_equal (&(walker->sock_addr), sender_sock) == 0)
+    { perror("Sending msg to all\n");
       /* if sock_addr(s) aren't equal, send messge */
-      sprintf(data, "%s: %s\n", p->sender, buffer);
+      sprintf(data, "%s: %s\n", uname, buffer);
       c_len = sizeof(walker->sock_addr);
       if (sendto (sock_fd, data, strlen(data), 0,
           (struct sockaddr*) &(walker->sock_addr), c_len) < 0) 

@@ -23,6 +23,7 @@ int is_connected (struct sockaddr_in*, client_t*); /* check whether the client i
 int is_equal (struct sockaddr_in*, struct sockaddr_in*); /* compare two clients */
 int assign_client (struct sockaddr_in*, char*, client_t**, client_t**); /* add new client to client list */
 char* get_username (struct sockaddr_in*, client_t*);
+void disconnect_client (struct sockaddr_in*, client_t**, client_t**);
 
 packet_t* construct_packet (struct sockaddr_in*, char*, char*);
 int get_msg_len (char* uname, char* msg);
