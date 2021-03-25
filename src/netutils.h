@@ -24,9 +24,10 @@ typedef struct packet_struct /* data packet structure */
 int is_connected (struct sockaddr_in*, client_t*); /* check whether the client is already connected */
 int is_equal (struct sockaddr_in*, struct sockaddr_in*); /* compare two clients */
 int assign_client (struct sockaddr_in*, char*, client_t**, client_t**); /* add new client to client list */
-char* get_username (struct sockaddr_in*, client_t*);
-void disconnect_client (struct sockaddr_in*, client_t**, client_t**);
-void get_netaddr (struct sockaddr_in*, char*, int*);
+char* get_username (struct sockaddr_in*, client_t*); /* get username from sockaddr_in structure */
+void disconnect_client (struct sockaddr_in*, client_t**, client_t**); /* remove(dc) client from the linked list */
+void get_netaddr (struct sockaddr_in*, char*, int*); /* get network address and port from sockaddr_in structure */
+void sh_cli_to_client (int, struct sockaddr_in*, client_t*); /* show clients list to requested client */
 
 packet_t* construct_packet (struct sockaddr_in*, char*, char*);
 int get_msg_len (char* uname, char* msg);

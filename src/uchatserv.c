@@ -135,6 +135,13 @@ void process_packets (int fd, struct sockaddr_in client)
       disconnect_client (&client, &head, &tail);
       strcpy (message, "disconnected");
     }
+
+    if (strcmp (message, "./sh cli") == 0) /* client requests for connected list */
+    {
+      sh_cli_to_client (fd, &client, head);
+      return;
+    }
+
     send_to_all (fd, &client, username, message, head);
   }
 }

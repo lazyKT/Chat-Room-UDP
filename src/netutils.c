@@ -113,12 +113,12 @@ int assign_client (struct sockaddr_in *c_sock, char *buffer, client_t** head, cl
 /* disconnect client: remove the client from the linked list */
 void disconnect_client (struct sockaddr_in* c_sock, client_t** head, client_t** tail)
 {
-  printf("Removing from client linked list...\n");
   if (is_equal (c_sock, &((*head)->sock_addr)) == 1)
   {
     /* if the dc client is the head */
     client_t* temp = *head;
     *head = (*head)->next;
+    printf("%s has disconnected\n", temp->name);
     free(temp);
   }
   else
@@ -134,19 +134,20 @@ void disconnect_client (struct sockaddr_in* c_sock, client_t** head, client_t** 
         {
           walker->next = NULL;
           *tail = walker;
+          printf("%s has disconnected\n", canditate->name);
           free(canditate);
           break;
         }
         /* remove the canditate from the linked list */
         walker->next = canditate->next;
         canditate->next = NULL;
+        printf("%s has disconnected\n", canditate->name);
         free (canditate);
         break;
       }
       walker = walker->next;
     }
   }
-  printf("client has been removed\n");
 } 
 
 
@@ -181,13 +182,12 @@ void send_to_all (int sock_fd, struct sockaddr_in *sender_sock, char* uname, cha
   int c_len;
   char data[BUF_SIZE+20];
   client_t *walker = head;
-  perror("insdie send_to_all()\n");
   while (walker != NULL)
   {
     if (is_equal (&(walker->sock_addr), sender_sock) == 0)
-    { perror("Sending msg to all\n");
+    {
       /* if sock_addr(s) aren't equal, send messge */
-      sprintf(data, "%s: %s\n", uname, buffer);
+      sprintf (data, "%s: %s\n", uname, buffer);
       c_len = sizeof(walker->sock_addr);
       if (sendto (sock_fd, data, strlen(data), 0,
           (struct sockaddr*) &(walker->sock_addr), c_len) < 0) 
@@ -195,6 +195,29 @@ void send_to_all (int sock_fd, struct sockaddr_in *sender_sock, char* uname, cha
         perror("send_to_all");
       }
     }
+    walker = walker->next;
+  }
+}
+
+/* show list of clients to the requested client */
+void sh_cli_to_client (int sock_fd, struct sockaddr_in* client, client_t* head)
+{
+  int num_written; /* total number of char written by sprintf */
+  int c_len = sizeof (*client);
+  char buffer[BUF_SIZE];
+  memset (buffer, '\0', BUF_SIZE);
+  client_t* walker = head;
+  
+  num_written = sprintf (buffer, "ID\tUName\n"); /* send title first */
+  if (sendto (sock_fd, buffer, num_written + 1, 0, (struct sockaddr*)client, c_len) < 0)
+    perror ("sending client list");
+
+  while (walker != NULL)
+  {
+    num_written = sprintf (buffer, "%d\t%s\n", walker->id, walker->name);
+    if (sendto (sock_fd, buffer, num_written + 1, 0, (struct sockaddr*)client, c_len) < 0)
+      perror ("sending client list");
+
     walker = walker->next;
   }
 }
