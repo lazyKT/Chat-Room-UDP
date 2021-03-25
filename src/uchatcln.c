@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <time.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -23,11 +24,12 @@ int recv_msg (int fd, struct sockaddr_in);
 
 int main (int argc, char* argv[])
 {
-  int sock_fd, s, r;
+  int sock_fd, s, r, tout;
   char uname[20], ip[16];
   struct sockaddr_in server, client;
   struct hostent *h;
   struct in_addr server_addr;
+  struct timeval timeout; /* for socket recvfrom timeout */
   fd_set test_set, ready_set;
 
   assign_args (argc, argv, uname, ip); /* assign credentials from cmd args */
@@ -45,6 +47,17 @@ int main (int argc, char* argv[])
     perror("Creating Socket");
     exit(EXIT_FAILURE);
   }
+
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 3000; /* 3 seconds timeout */
+  if (setsockopt (sock_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
+  {
+    /* if the client didn't receive any packet from the server within 3 seconds,
+       the program will raise socket_timeout error and exit the program */
+    perror ("Connection Timeout");
+    exit(EXIT_FAILURE);
+  }
+  
   
   memset((char*)&server, 0, sizeof(server));
   server.sin_family = AF_INET;
